@@ -1,0 +1,57 @@
+#!/usr/bin/env php
+<?php
+
+define('ENDPOINT', 'https://etsy.superfeedr.com');
+define('API_KEY', getenv('ETSY_API_KEY'));
+define('FEED_URL', 'http://www.etsy.com/api/push/listings/latest.atom');
+define('USAGE', <<<EOF
+USAGE:
+
+./superfeedr -m mode -c callback
+
+mode      'subscribe' or 'unsubscribe'
+callback  the callback URL that SuperFeedr will hit
+
+EOF
+);
+
+$options = getopt('m:c:');
+
+if (!isset($options['m']) || !isset($options['c'])) {
+    echo USAGE;
+    die(1);
+}
+
+$mode = $options['m'];
+$callback = $options['c'];
+
+if ($mode !== 'subscribe' && $mode !== 'unsubscribe') {
+    echo USAGE;
+    die(1);
+}
+
+$post_vars = [
+    'hub.mode' => $mode,
+    'hub.callback' => $callback,
+    'hub.topic' => FEED_URL,
+    'hub.verify' => 'sync',
+    'api_key' => API_KEY,
+    'time_stamp' => time()
+];
+
+$fields = '';
+foreach ($post_vars as $key => $value) {
+    $fields .= "$key=$value&";
+}
+rtrim($fields, '&');
+
+$curl_handler = curl_init();
+
+curl_setopt($curl_handler, CURLOPT_URL, ENDPOINT);
+curl_setopt($curl_handler, CURLOPT_POST, count($post_vars));
+curl_setopt($curl_handler, CURLOPT_POSTFIELDS, $fields);
+
+$result = curl_exec($curl_handler);
+curl_close($curl_handler);
+
+var_dump($result);
